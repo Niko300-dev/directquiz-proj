@@ -9,7 +9,7 @@ const options = {
 
 var express = require('express');
 const axios = require('axios');
-const MINUTES_TIMEOUT = 30;
+const MINUTES_TIMEOUT = 45;
 var app = express();
 var server = app.listen(3000);
 const regexHTML = /(<([^>]+)>)/ig;
@@ -539,7 +539,7 @@ function newConnection(socket)
 				{
 					io.sockets.emit('annonce',{type:5,annonce:listeDesMembres[i] + " a été expulsé pour libèrer de la bande passante..."});
 				}
-				listeDesMembresAvecDetail[i].points = 0;
+				//listeDesMembresAvecDetail[i].points = 0;
 				allClients[i].disconnect(true);
 				
 			}
