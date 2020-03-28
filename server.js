@@ -11,7 +11,7 @@ var express = require('express');
 const axios = require('axios');
 const MINUTES_TIMEOUT = 45;
 var app = express();
-var server = app.listen(3000);
+var server = app.listen(3001);
 const regexHTML = /(<([^>]+)>)/ig;
 
 app.use(express.static('public'));
@@ -63,7 +63,14 @@ function lancerUnePhraseAuHasard()
 {
 	
 	var phraseRandom = listePhrasesInutiles[getRandomInt(0,listePhrasesInutiles.length)];
-	var membre1 = listeDesMembres[getRandomInt(0,listeDesMembres.length)];
+	var membre1 = "une personne";
+
+	var sizeM = listeDesMembres.filter(membre => membre.length > 2).length
+
+do { 
+membre1 = listeDesMembres[getRandomInt(0,listeDesMembres.length)];
+} while (membre1 === undefined);
+
 	var membre2 = "quelqu'un";
 	
 
@@ -73,12 +80,22 @@ function lancerUnePhraseAuHasard()
 	}
 	else
 	{	
-		if ((phraseRandom.lastIndexOf("ggg") > -1) && (listeDesMembres.length > 1))
+		if ((phraseRandom.indexOf("ggg") > -1) && sizeM  > 1)
 		{
-			membre1 = listeDesMembres[getRandomInt(0,listeDesMembres.length)];		
+			
+
+		do { 
+			membre1 = listeDesMembres[getRandomInt(0,listeDesMembres.length)];
+		} while (membre1 === undefined);		
 		
 				do {
-					membre2 = listeDesMembres[getRandomInt(0,listeDesMembres.length)];
+				
+
+					do { 
+						membre2 = listeDesMembres[getRandomInt(0,listeDesMembres.length)];
+					} while (membre2 === undefined);
+
+
 				}
 				while (membre1 == membre2);
 			
@@ -90,7 +107,7 @@ function lancerUnePhraseAuHasard()
 			 phraseRandom = phraseRandom.replace(/mmm/,membre1);
 		}
 	}
-	io.sockets.emit('annonce',{type:99,annonce:phraseRandom});
+	io.sockets.emit('annonce',{type:99,annonce:phraseRandom + "debug : " + sizeM});
 }
 
 function init(resetMember)
@@ -397,8 +414,15 @@ function newConnection(socket)
 			}
 			else
 			{
-				if (listeDesMembres.length < 2) io.sockets.emit('annonce',{type:99,annonce:"Tu dois avoir des adversaires pour pouvoir lancer une partie..."});
-				else if (isStart) io.sockets.emit('annonce',{type:99,annonce:"La partie est déjà lancée !"});
+				if (listeDesMembres.length < 2) 
+				{
+					io.sockets.emit('annonce',{type:99,annonce:"Tu dois avoir des adversaires pour pouvoir lancer une partie..."});
+					io.sockets.emit('annonce',{type:5,annonce:"Il faut plusieurs personnes pour qu'une partie débute..."});
+				}
+				else if (isStart) 
+				{
+					io.sockets.emit('annonce',{type:99,annonce:"La partie est déjà lancée !"});
+				}
 			}
 		}
 		else if (!timeout && (!isFinish && isStart && (isMatch(message.normalize("NFD").replace(/[\u0300-\u036f]/g, ""), reponseAttendue.normalize("NFD").replace(/[\u0300-\u036f]/g, "")) && cptQuestion >= 0)))
