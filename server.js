@@ -104,10 +104,15 @@ membre1 = listeDesMembres[getRandomInt(0,listeDesMembres.length)];
 		}
 		else
 		{
-			 phraseRandom = phraseRandom.replace(/mmm/,membre1);
+			
+			do {
+			phraseRandom =  listePhrasesInutiles[getRandomInt(0,listePhrasesInutiles.length)];
+			} while (phraseRandom.indexOf("ggg") > -1);
+
+			phraseRandom = phraseRandom.replace(/mmm/,membre1);
 		}
 	}
-	io.sockets.emit('annonce',{type:99,annonce:phraseRandom + "debug : " + sizeM});
+	io.sockets.emit('annonce',{type:99,annonce:phraseRandom});
 }
 
 function init(resetMember)
@@ -298,7 +303,7 @@ function isMatch(msg, reponseAttendue)
 			msgArray[j+1] = charTemp;
 			messageSalted = msgArray.join("");
 			console.log("SALT:" + messageSalted.toUpperCase() + " REP:" + arrayReponse[i] + " MSG:" + msg.toUpperCase());
-			if (messageSalted.toUpperCase().trim().lastIndexOf(arrayReponse[i])  > -1 || msg.toUpperCase().lastIndexOf(arrayReponse[i]) > -1) return true;
+			if (messageSalted.toUpperCase().trim().replace(/-/g," ").lastIndexOf(arrayReponse[i])  > -1 || msg.replace(/-/g," ").toUpperCase().lastIndexOf(arrayReponse[i]) > -1) return true;
 		}
 		
 	}
