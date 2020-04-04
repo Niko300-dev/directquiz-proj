@@ -147,7 +147,7 @@ function init(resetMember)
 	var listeIDQuestions = new Array(0);
 	var IDgot = 0;
 			  
-		axios.post('https://niko.ovh/directquiz89/getCount.php', {
+		axios.post('https://niko.ovh/directquiz89/getCountV2.php', {
 
 		  })
 		  .then(function (response) {
@@ -172,7 +172,7 @@ function init(resetMember)
 				params.append('id', listeIDQuestions[i]);
 				axios({
 				  method: 'post',
-				  url: 'https://niko.ovh/directquiz89/getQuestion.php',
+				  url: 'https://niko.ovh/directquiz89/getQuestionV2.php',
 				  data: params
 				}).then(function (response) {
 					  //console.log(response.data);
@@ -260,7 +260,7 @@ function nextQuestion()
 					io.sockets.emit('annonce',{type:4,annonce:"Le quiz est terminé ! Merci à tous pour votre participation !"});
 					updateScoreInDB();
 					init(false);
-					chronoPhSortieHasard = setInterval(lancerUnePhraseAuHasard, 15000);					
+					chronoPhSortieHasard = setInterval(lancerUnePhraseAuHasard, 25000);					
 				},6000);
 
 		},250);
@@ -276,7 +276,7 @@ function nextQuestion()
 				io.sockets.emit('annonce',{type:4,annonce:"QUESTION " + (cptQuestion + 1) + " : " + listeQuestions[cptQuestion].description});
 				timeout = false;
 				
-				setTimeout(lancerUnePhraseAuHasard,30000);
+				setTimeout(lancerUnePhraseAuHasard,20000);
 				
 				
 			},7000);
@@ -288,13 +288,27 @@ function nextQuestion()
 
 function isMatch(msg, reponseAttendue)
 {
-	var arrayReponse = reponseAttendue.split("/");
+	var arrayReponse = reponseAttendue.split("|");
 	var messageSalted = "";
 	var charTemp = "";
 	var msgArray = Array.from(msg+" ");
-	
+	var reponseClean = "";
+
 	for (i = 0; i < arrayReponse.length ; i++)
 	{
+
+		var reponseDecomposee = arrayReponse[i].split(" ");
+
+		if (reponseDecomposee[0].toLowerCase() == "le" || reponseDecomposee[0].toLowerCase() == "la" || reponseDecomposee[0].toLowerCase() == "un" || reponseDecomposee[0].toLowerCase() == "une")
+		{
+			reponseDecomposee.splice(0,1);
+			reponseClean = reponseDecomposee.join(" ");
+		}
+		else
+		{
+			reponseClean = arrayReponse[i];
+		}
+
 		for (j = 0; j < msg.length ; j++)
 		{		
 			msgArray = Array.from(msg+" ");
@@ -302,8 +316,8 @@ function isMatch(msg, reponseAttendue)
 			msgArray[j] = msgArray[j+1];
 			msgArray[j+1] = charTemp;
 			messageSalted = msgArray.join("");
-			console.log("SALT:" + messageSalted.toUpperCase() + " REP:" + arrayReponse[i] + " MSG:" + msg.toUpperCase());
-			if (messageSalted.toUpperCase().trim().replace(/-/g," ").lastIndexOf(arrayReponse[i])  > -1 || msg.replace(/-/g," ").toUpperCase().lastIndexOf(arrayReponse[i]) > -1) return true;
+			console.log("SALT:" + messageSalted.toUpperCase() + " REP:" + reponseClean  + " MSG:" + msg.toUpperCase());
+			if (messageSalted.toUpperCase().trim().replace(/-/g," ").lastIndexOf(reponseClean)  > -1 || msg.replace(/-/g," ").toUpperCase().lastIndexOf(reponseClean) > -1) return true;
 		}
 		
 	}
@@ -404,13 +418,14 @@ function newConnection(socket)
 						
 						setTimeout(function(){
 							io.sockets.emit('annonce',{type:4,annonce:"QUESTION " + (cptQuestion+1) + " : " + listeQuestions[cptQuestion].description});
-						},15500);
+							chrono = setInterval(nextQuestion,40000);
+						},14000);
 					
-					},2000);
+					},2500);
 					
 
 					
-					chrono = setInterval(nextQuestion,55000);
+					
 				}
 				else
 				{
@@ -596,7 +611,9 @@ function newConnection(socket)
 		for (i = 0; i < listeDesMembresAvecDetail.length; i++)
 		{
 			
-			const params = new URLSearchParams();
+			try 
+			{
+				const params = new URLSearchParams();
 				params.append('id_user', listeDesMembresAvecDetail[i].id);
 				params.append('points', listeDesMembresAvecDetail[i].points);
 				axios({
@@ -609,7 +626,11 @@ function newConnection(socket)
 				  .catch(function (error) {
 					console.log(error);
 				  });
-
+			}
+			catch (error)
+			{
+				console.error(error);
+			}
 		}
 	}
 // C:\Users\nico3\nodeServeur\server.js
