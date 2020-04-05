@@ -25,6 +25,8 @@ var io = socket(server);
 var cptQuestion = -1;
 var cptReponseDonnee = 0;
 
+var messageTitre = "";
+
 io.sockets.on('connection', newConnection);
 
 io.use(function(socket, next) {
@@ -177,7 +179,7 @@ function init(resetMember)
 				}).then(function (response) {
 					  //console.log(response.data);
 					var resultQuestion = response.data.split("###");
-					listeQuestions.push(new question(resultQuestion[0],resultQuestion[1].toUpperCase()));
+					listeQuestions.push(new question(resultQuestion[0],resultQuestion[1].toUpperCase(), parseInt(resultQuestion[2], 10)));
 				  })
 				  .catch(function (error) {
 					console.log(error);
@@ -228,10 +230,11 @@ setInterval(disconnectIfTimeout, 300000);
 
 }
 
-function question(description, reponse)
+function question(description, reponse, difficulty)
 {
 	this.description = description;
 	this.reponse = reponse;
+	this.difficulty = difficulty;
 }
 
 function membre(id, name, tokentime, points)
@@ -254,10 +257,12 @@ function nextQuestion()
 		setTimeout(function(){
 			isStart = false;
 			io.sockets.emit('annonce',{type:4,annonce:"Le temps est écoulé... La bonne réponse était \""+listeQuestions[cptQuestion].reponse.split("|")[0]+"\" !"});
+			messageTitre = "Le temps est écoulé... La bonne réponse était \""+listeQuestions[cptQuestion].reponse.split("|")[0]+"\" !";
 			isFinish = true;
 			timeout = true;
 				setTimeout(function(){
 					io.sockets.emit('annonce',{type:4,annonce:"Le quiz est terminé ! Merci à tous pour votre participation !"});
+					messageTitre = "Le quiz est terminé ! Merci à tous pour votre participation ! (/start pour lancer une nouvelle partie...)";
 					updateScoreInDB();
 					init(false);
 					chronoPhSortieHasard = setInterval(lancerUnePhraseAuHasard, 25000);					
@@ -271,9 +276,11 @@ function nextQuestion()
 		setTimeout(function(){
 			timeout = true;
 			io.sockets.emit('annonce',{type:4,annonce:"Le temps est écoulé... La bonne réponse était \""+listeQuestions[cptQuestion].reponse.split("|")[0]+"\" !"});
+			messageTitre = "Le temps est écoulé... La bonne réponse était \""+listeQuestions[cptQuestion].reponse.split("|")[0]+"\" !";
 			setTimeout(function(){
 				cptQuestion++;
 				io.sockets.emit('annonce',{type:4,annonce:"QUESTION " + (cptQuestion + 1) + " : " + listeQuestions[cptQuestion].description});
+				messageTitre = "QUESTION " + (cptQuestion + 1) + " : " + listeQuestions[cptQuestion].description;
 				timeout = false;
 				
 				setTimeout(lancerUnePhraseAuHasard,20000);
@@ -299,7 +306,7 @@ function isMatch(msg, reponseAttendue)
 
 		var reponseDecomposee = arrayReponse[i].split(" ");
 
-		if (reponseDecomposee[0].toLowerCase() == "le" || reponseDecomposee[0].toLowerCase() == "la" || reponseDecomposee[0].toLowerCase() == "un" || reponseDecomposee[0].toLowerCase() == "une")
+		if (reponseDecomposee[0].toLowerCase() == "le" || reponseDecomposee[0].toLowerCase() == "la" || reponseDecomposee[0].toLowerCase() == "un" || reponseDecomposee[0].toLowerCase() == "une" || reponseDecomposee[0].toLowerCase() == "l'" || reponseDecomposee[0].toLowerCase() == "les" || reponseDecomposee[0].toLowerCase() == "des")
 		{
 			reponseDecomposee.splice(0,1);
 			reponseClean = reponseDecomposee.join(" ");
@@ -317,7 +324,7 @@ function isMatch(msg, reponseAttendue)
 			msgArray[j+1] = charTemp;
 			messageSalted = msgArray.join("");
 			console.log("SALT:" + messageSalted.toUpperCase() + " REP:" + reponseClean  + " MSG:" + msg.toUpperCase());
-			if (messageSalted.toUpperCase().trim().replace(/-/g," ").lastIndexOf(reponseClean)  > -1 || msg.replace(/-/g," ").toUpperCase().lastIndexOf(reponseClean) > -1) return true;
+			if (messageSalted.toUpperCase().trim().replace(/-/g," ").lastIndexOf(reponseClean.replace(/-/g," "))  > -1 || msg.replace(/-/g," ").toUpperCase().lastIndexOf(reponseClean.replace(/-/g," ")) > -1) return true;
 		}
 		
 	}
@@ -347,8 +354,7 @@ function newConnection(socket)
 	allClients.push(socket);
 	console.log('new connection' + socket.id);
 	console.log(socket.id);
-	//3598bde5-abe2-4703-a481-384c5276f2b7
-
+	//3598bde5-abe2-4703-a481-384c5276f2b
 	socket.on('message', messageGet);
 	socket.on('addMember', addMember);
 	socket.on('alive', isAlive);
@@ -416,8 +422,16 @@ function newConnection(socket)
 						
 						annonceCandidats();
 						
+
+						// Placer les questions par ordre de difficulté
+							
+							listeQuestions.sort(function (a, b) {
+		   						return a.difficulty - b.difficulty;
+							});
+
 						setTimeout(function(){
 							io.sockets.emit('annonce',{type:4,annonce:"QUESTION " + (cptQuestion+1) + " : " + listeQuestions[cptQuestion].description});
+							messageTitre = "QUESTION " + (cptQuestion+1) + " : " + listeQuestions[cptQuestion].description;
 							chrono = setInterval(nextQuestion,40000);
 						},14000);
 					
@@ -438,6 +452,7 @@ function newConnection(socket)
 				{
 					io.sockets.emit('annonce',{type:99,annonce:"Tu dois avoir des adversaires pour pouvoir lancer une partie..."});
 					io.sockets.emit('annonce',{type:5,annonce:"Il faut plusieurs personnes pour qu'une partie débute..."});
+					
 				}
 				else if (isStart) 
 				{
@@ -500,9 +515,9 @@ function newConnection(socket)
 	
 		console.log("Adding member : " + pseudo);
 		var re = "";
-		var dataAckMaxUser = {msg:"ERROR_TOMANYUSER"}
-		var dataAckExist = {msg:"ERROR_ALREADYEXIST"}
-		var dataAckOK = {msg:"OK"}
+		var dataAckMaxUser = {msg:"ERROR_TOMANYUSER"};
+		var dataAckExist = {msg:"ERROR_ALREADYEXIST"};
+		var dataAckOK = {msg:"OK"};
 		
 		if (listeDesMembres.length == 8)
 		{
@@ -521,6 +536,8 @@ function newConnection(socket)
 			console.log("ACCES AUTORISE");
 			socket.emit('ack', dataAckOK);
 			
+		
+
 			var idOfficielOffline = listeDesMembresOffline.lastIndexOf(pseudo);
 			
 			if (idOfficielOffline > -1)
@@ -543,6 +560,8 @@ function newConnection(socket)
 			countMember = listeDesMembres.length;
 			socket.broadcast.emit('annonce',{type:1,annonce:pseudo + " s'est " + re + "connecté !"});
 			refreshListeSlots();			
+		setTimeout(
+	function(){io.sockets.emit('refreshTopMessage',{nickname:pseudo, msg:messageTitre});},2000);
 		}
 		
 	}
