@@ -52,8 +52,17 @@ var isFinish = false;
 var listePhrasesInutiles = new Array(0);
 var listePhrasesSortie = new Array(0);
 var timeout = false;
+var globalChronoQuestion = 40;
+var timerSecondes = null;
 
 init();
+
+function timerSec()
+{
+	globalChronoQuestion--;
+	notifyChrono(globalChronoQuestion, 40);
+	if (globalChronoQuestion == 0) clearInterval(timerSecondes);
+}
 
 function getRandomInt(min, max) {
   min = Math.ceil(min);
@@ -123,6 +132,7 @@ function init(resetMember)
 	isFinish = false;
 
 	clearInterval(chronoPhSortieHasard);
+	clearInterval(timerSecondes);
 	
 	listeRepondantCorrect = new Array(0);
 	countMember = 0;
@@ -210,12 +220,21 @@ listePhrasesInutiles.push("Apparement, mmm est content d'être là !");
 listePhrasesInutiles.push("mmm devrait arrêter de se tourner les pouces et se concentrer sur la partie.");
 listePhrasesInutiles.push("mmm est certainement décidé à gagner cette partie !");
 listePhrasesInutiles.push("mmm mise tout sur sa victoire...");
+
+
+listePhrasesInutiles.push("N'oubliez pas de vous laver régulièrement les mains, surtout toi mmm !");
+listePhrasesInutiles.push("Prenez exemple sur mmm en toussant dans votre coude...");
+listePhrasesInutiles.push("Prière de garder une distance d'un mêtre 50 au minimum entre chaque candidas");
+listePhrasesInutiles.push("Prenez soin de vos proches et de vous même face au covid 19...");
+
+
 listePhrasesInutiles.push("Il semblerait que mmm ai bien révisé ses classiques.");
 listePhrasesInutiles.push("mmm aimerait être aussi malin que ggg");
 listePhrasesInutiles.push("Je pense que mmm est un bon ami de ggg");
 listePhrasesInutiles.push("mmm pense surement qu'il va gagner la partie");
 listePhrasesInutiles.push("mmm est un redoutable adversaire, il cache bien son jeu...");
 listePhrasesInutiles.push("mmm devrait se méfier de ggg...");
+
 
 listePhrasesSortie = new Array(0);
 
@@ -256,6 +275,10 @@ function nextQuestion()
 		clearInterval(chrono);
 		setTimeout(function(){
 			isStart = false;
+			clearInterval(timerSecondes);
+			
+			globalChronoQuestion = 40;			
+			notifyChrono(0,40);			
 			io.sockets.emit('annonce',{type:4,annonce:"Le temps est écoulé... La bonne réponse était \""+listeQuestions[cptQuestion].reponse.split("|")[0]+"\" !"});
 			messageTitre = "Le temps est écoulé... La bonne réponse était \""+listeQuestions[cptQuestion].reponse.split("|")[0]+"\" !";
 			isFinish = true;
@@ -275,16 +298,19 @@ function nextQuestion()
 
 		setTimeout(function(){
 			timeout = true;
-			io.sockets.emit('annonce',{type:4,annonce:"Le temps est écoulé... La bonne réponse était \""+listeQuestions[cptQuestion].reponse.split("|")[0]+"\" !"});
+			clearInterval(timerSecondes);
+			notifyChrono(0,40);
+			io.sockets.emit('annonce',{type:4,annonce:"Le temps est écoulé... La bonne réponse était \""+listeQuestions[cptQuestion].reponse.split("|")[0]+"\" !"});			
 			messageTitre = "Le temps est écoulé... La bonne réponse était \""+listeQuestions[cptQuestion].reponse.split("|")[0]+"\" !";
 			setTimeout(function(){
 				cptQuestion++;
+				globalChronoQuestion = 40;
+				timerSecondes = setInterval(timerSec, 1000);
 				io.sockets.emit('annonce',{type:4,annonce:"QUESTION " + (cptQuestion + 1) + " : " + listeQuestions[cptQuestion].description});
 				messageTitre = "QUESTION " + (cptQuestion + 1) + " : " + listeQuestions[cptQuestion].description;
 				timeout = false;
-				
 				setTimeout(lancerUnePhraseAuHasard,20000);
-				
+				setTimeout(nextQuestion,40000);
 				
 			},7000);
 		},250);		
@@ -359,6 +385,8 @@ function newConnection(socket)
 	socket.on('addMember', addMember);
 	socket.on('alive', isAlive);
 	
+	notifyChrono(globalChronoQuestion, 40);
+
 	socket.on("disconnect", function(){		
 		var i = allClients.indexOf(socket);
 		listeDesMembresAvecDetailOffline.push(listeDesMembresAvecDetail[i]);
@@ -428,12 +456,15 @@ function newConnection(socket)
 							listeQuestions.sort(function (a, b) {
 		   						return a.difficulty - b.difficulty;
 							});
-
+							
 						setTimeout(function(){
 							io.sockets.emit('annonce',{type:4,annonce:"QUESTION " + (cptQuestion+1) + " : " + listeQuestions[cptQuestion].description});
 							messageTitre = "QUESTION " + (cptQuestion+1) + " : " + listeQuestions[cptQuestion].description;
-							chrono = setInterval(nextQuestion,40000);
-						},14000);
+							globalChronoQuestion = 40;							
+							timerSecondes = setInterval(timerSec, 1000);
+								
+							setTimeout(nextQuestion,40000);							
+						},7000);
 					
 					},2500);
 					
@@ -623,6 +654,11 @@ function newConnection(socket)
 				}
 
 		}
+	}
+
+	function notifyChrono(restant_, total_)
+	{
+		io.sockets.emit('chrono',{total:total_,restant:restant_});
 	}
 	
 	function updateScoreInDB()
