@@ -9,7 +9,7 @@ const options = {
 
 var express = require('express');
 const axios = require('axios');
-const MINUTES_TIMEOUT = 45;
+const MINUTES_TIMEOUT = 160;
 var app = express();
 var server = app.listen(3001);
 const regexHTML = /(<([^>]+)>)/ig;
@@ -319,22 +319,54 @@ function nextQuestion()
 	
 }
 
+function distanceLeven(a, b)
+{
+    if(!a || !b) return (a || b).length;
+    var m = [];
+    for(var i = 0; i <= b.length; i++){
+        m[i] = [i];
+        if(i === 0) continue;
+        for(var j = 0; j <= a.length; j++){
+            m[0][j] = j;
+            if(j === 0) continue;
+            m[i][j] = b.charAt(i - 1) == a.charAt(j - 1) ? m[i - 1][j - 1] : Math.min(
+                m[i-1][j-1] + 1,
+                m[i][j-1] + 1,
+                m[i-1][j] + 1
+            );
+        }
+    }
+
+console.log("Distance de Levenshtein entre "+ a +" et "+ b +" : "+ m[b.length][a.length]);
+
+return m[b.length][a.length];
+}
+
+
 function isMatch(msg, reponseAttendue)
 {
 	var arrayReponse = reponseAttendue.split("|");
 	var messageSalted = "";
 	var charTemp = "";
-	var msgArray = Array.from(msg+" ");
 	var reponseClean = "";
+	var msgClean = "";
+	var indiceDeSimilarite = 999;
 
 	for (i = 0; i < arrayReponse.length ; i++)
 	{
 
 		var reponseDecomposee = arrayReponse[i].split(" ");
 
-		if (reponseDecomposee[0].toLowerCase() == "le" || reponseDecomposee[0].toLowerCase() == "la" || reponseDecomposee[0].toLowerCase() == "un" || reponseDecomposee[0].toLowerCase() == "une" || reponseDecomposee[0].toLowerCase() == "l'" || reponseDecomposee[0].toLowerCase() == "les" || reponseDecomposee[0].toLowerCase() == "des")
+		if (reponseDecomposee[0].toLowerCase() == "le" || reponseDecomposee[0].toLowerCase() == "la" || reponseDecomposee[0].toLowerCase() == "un" || reponseDecomposee[0].toLowerCase() == "une" || reponseDecomposee[0].indexOf("'") == 1 || reponseDecomposee[0].toLowerCase() == "les" || reponseDecomposee[0].toLowerCase() == "des" || reponseDecomposee[0].toLowerCase() == "du")
 		{
-			reponseDecomposee.splice(0,1);
+			if (reponseDecomposee[0].indexOf("'") == 1)
+			{
+				reponseDecomposee[0] = reponseDecomposee[0].substring(2);	
+			}
+			else
+			{
+				reponseDecomposee.splice(0,1);
+			}
 			reponseClean = reponseDecomposee.join(" ");
 		}
 		else
@@ -342,17 +374,35 @@ function isMatch(msg, reponseAttendue)
 			reponseClean = arrayReponse[i];
 		}
 
-		for (j = 0; j < msg.length ; j++)
-		{		
-			msgArray = Array.from(msg+" ");
-			charTemp = msgArray[j];
-			msgArray[j] = msgArray[j+1];
-			msgArray[j+1] = charTemp;
-			messageSalted = msgArray.join("");
-			console.log("SALT:" + messageSalted.toUpperCase() + " REP:" + reponseClean  + " MSG:" + msg.toUpperCase());
-			if (messageSalted.toUpperCase().trim().replace(/-/g," ").lastIndexOf(reponseClean.replace(/-/g," "))  > -1 || msg.replace(/-/g," ").toUpperCase().lastIndexOf(reponseClean.replace(/-/g," ")) > -1) return true;
+		var msgDecompose = msg.split(" ");
+
+		if (msgDecompose[0].toLowerCase() == "le" || msgDecompose[0].toLowerCase() == "la" || msgDecompose[0].toLowerCase() == "un" || msgDecompose[0].toLowerCase() == "une" || msgDecompose[0].indexOf("'") == 1 || msgDecompose[0].toLowerCase() == "les" || msgDecompose[0].toLowerCase() == "des" || msgDecompose[0].toLowerCase() == "du")
+		{
+			if (msgDecompose[0].indexOf("'") == 1)
+			{
+				msgDecompose[0] = msgDecompose[0].substring(2);	
+			}
+			else
+			{
+				msgDecompose.splice(0,1);
+			}
+			msgClean = msgDecompose.join(" ");
+		}
+		else
+		{
+			msgClean = msg;
 		}
 		
+		msgClean = msgClean.toUpperCase();
+		reponseClean = reponseClean.toUpperCase();
+
+		reponseClean = reponseClean.replace(/-/g, " ");
+		msgClean = msgClean.replace(/-/g, " ");		
+
+		indiceDeSimilarite = distanceLeven(msgClean, reponseClean);		
+
+		if ((indiceDeSimilarite <= 3 && reponseClean.length >= 6) || (indiceDeSimilarite <= 1 && reponseClean.length < 6 && reponseClean.length > 1) || (indiceDeSimilarite == 0 && reponseClean.length == 1)) return true;
+				
 	}
 	
 	return false;
