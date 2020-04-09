@@ -357,7 +357,7 @@ function isMatch(msg, reponseAttendue)
 
 		var reponseDecomposee = arrayReponse[i].split(" ");
 
-		if (reponseDecomposee[0].toLowerCase() == "le" || reponseDecomposee[0].toLowerCase() == "la" || reponseDecomposee[0].toLowerCase() == "un" || reponseDecomposee[0].toLowerCase() == "une" || reponseDecomposee[0].indexOf("'") == 1 || reponseDecomposee[0].toLowerCase() == "les" || reponseDecomposee[0].toLowerCase() == "des" || reponseDecomposee[0].toLowerCase() == "du")
+		if (reponseDecomposee[0].toLowerCase() == "au" || reponseDecomposee[0].toLowerCase() == "en" || reponseDecomposee[0].toLowerCase() == "le" || reponseDecomposee[0].toLowerCase() == "la" || reponseDecomposee[0].toLowerCase() == "un" || reponseDecomposee[0].toLowerCase() == "une" || reponseDecomposee[0].indexOf("'") == 1 || reponseDecomposee[0].toLowerCase() == "les" || reponseDecomposee[0].toLowerCase() == "des" || reponseDecomposee[0].toLowerCase() == "du")
 		{
 			if (reponseDecomposee[0].indexOf("'") == 1)
 			{
@@ -376,7 +376,7 @@ function isMatch(msg, reponseAttendue)
 
 		var msgDecompose = msg.split(" ");
 
-		if (msgDecompose[0].toLowerCase() == "le" || msgDecompose[0].toLowerCase() == "la" || msgDecompose[0].toLowerCase() == "un" || msgDecompose[0].toLowerCase() == "une" || msgDecompose[0].indexOf("'") == 1 || msgDecompose[0].toLowerCase() == "les" || msgDecompose[0].toLowerCase() == "des" || msgDecompose[0].toLowerCase() == "du")
+		if (msgDecompose[0].toLowerCase() == "au" || msgDecompose[0].toLowerCase() == "en" || msgDecompose[0].toLowerCase() == "le" || msgDecompose[0].toLowerCase() == "la" || msgDecompose[0].toLowerCase() == "un" || msgDecompose[0].toLowerCase() == "une" || msgDecompose[0].indexOf("'") == 1 || msgDecompose[0].toLowerCase() == "les" || msgDecompose[0].toLowerCase() == "des" || msgDecompose[0].toLowerCase() == "du")
 		{
 			if (msgDecompose[0].indexOf("'") == 1)
 			{
@@ -397,17 +397,72 @@ function isMatch(msg, reponseAttendue)
 		reponseClean = reponseClean.toUpperCase();
 
 		reponseClean = reponseClean.replace(/-/g, " ");
-		msgClean = msgClean.replace(/-/g, " ");		
+		msgClean = msgClean.replace(/-/g, " ");	
 
-		indiceDeSimilarite = distanceLeven(msgClean, reponseClean);		
+			
 
-		if ((indiceDeSimilarite <= 3 && reponseClean.length >= 6) || (indiceDeSimilarite <= 1 && reponseClean.length < 6 && reponseClean.length > 1) || (indiceDeSimilarite == 0 && reponseClean.length == 1)) return true;
+		if (checkIfStrictNumber(reponseClean))
+		{
+			indiceDeSimilarite = distanceLeven(msgClean.replace(/\D*$/g,''), reponseClean);
+			if (indiceDeSimilarite == 0) return true;
+		}
+		else if (checkIfNumberMesure(reponseClean) && checkIfNumberMesure(msgClean))
+		{
+			var valeurChiffreeReponseToFind = "";
+			var valeurChiffreeReponseSend = "";
+			
+			var decompositionValeurNommeeReponseToFind = reponseClean.split(" ");
+			valeurChiffreeReponseToFind = decompositionValeurNommeeReponseToFind[0];
+			decompositionValeurNommeeReponseToFind.splice(0,1);
+			var nommageReponseToFind = decompositionValeurNommeeReponseToFind.join(" ");
+			
+			var decompositionValeurNommeeReponseSend = msgClean.split(" ");
+			valeurChiffreeReponseSend = decompositionValeurNommeeReponseSend[0];
+			decompositionValeurNommeeReponseSend.splice(0,1);
+			var nommageReponseSend = decompositionValeurNommeeReponseSend.join(" ");		
+			
+			indiceDeSimilariteNommage = distanceLeven(nommageReponseToFind, nommageReponseSend);
+			indiceDeSimilariteChiffrage = distanceLeven(valeurChiffreeReponseToFind, valeurChiffreeReponseSend);
+			
+			if (nommageReponseToFind.length >= 6)
+			{
+				if (indiceDeSimilariteChiffrage == 0 && indiceDeSimilariteNommage <= 3) return true;
+			}
+			else if (nommageReponseToFind.length < 6 && nommageReponseToFind.length > 2)
+			{
+				if (indiceDeSimilariteChiffrage == 0 && indiceDeSimilariteNommage <= 1) return true;
+			}
+			else
+			{
+				if (indiceDeSimilariteChiffrage == 0 && indiceDeSimilariteNommage == 0) return true;
+			}
+		}
+		else
+		{
+			if (!checkIfNumberMesure(reponseClean))
+			{
+				indiceDeSimilarite = distanceLeven(msgClean, reponseClean);
+				if ((indiceDeSimilarite <= 3 && reponseClean.length >= 6) || (indiceDeSimilarite <= 1 && reponseClean.length < 6 && reponseClean.length > 1) || (indiceDeSimilarite == 0 && reponseClean.length == 1)) return true;
+			}
+		}	
 				
 	}
 	
 	return false;
 	
 }
+
+function checkIfNumberMesure(str) { 
+	var regex = new RegExp(/^\d{1,6} \D+$/); 
+	var testResult = regex.test(str.trim()); 
+	return testResult;
+} 
+
+function checkIfStrictNumber(str) { 
+	var regex = new RegExp(/^\d{1,6}$/); 
+	var testResult = regex.test(str.trim()); 
+	return testResult;
+} 
 
 function annonceCandidats()
 {
