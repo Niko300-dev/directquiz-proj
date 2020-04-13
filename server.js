@@ -256,12 +256,26 @@ function question(description, reponse, difficulty)
 	this.difficulty = difficulty;
 }
 
-function membre(id, name, tokentime, points)
+function membre(id, name, tokentime, points, floodCPT, floodTime, floodRespawnTime, floodNbrInfractions)
 {
 	this.id = id
 	this.name = name;
 	this.tokentime = tokentime;
 	this.points = points;
+	this.floodCPT = floodCPT;
+	this.floodTime = floodTime;
+	this.floodRespawnTime = floodRespawnTime;
+	this.floodNbrInfractions = floodNbrInfractions;
+}
+
+function getIndexOfMemberByPseudo(liste, pseudo)
+{
+	for (i = 0; i < liste.length ; i++)
+	{
+		if (liste[i].name == pseudo) return i;
+	}
+	
+	return -1;
 }
 
 function nextQuestion()
@@ -562,6 +576,8 @@ function newConnection(socket)
 		   						return a.difficulty - b.difficulty;
 							});
 							
+						var DelaiAvantPremiereQuestion = 3000 + (listeDesMembresAvecDetail.length * 3000); 
+
 						setTimeout(function(){
 							io.sockets.emit('annonce',{type:4,annonce:"QUESTION " + (cptQuestion+1) + " : " + listeQuestions[cptQuestion].description});
 							messageTitre = "QUESTION " + (cptQuestion+1) + " : " + listeQuestions[cptQuestion].description;
@@ -569,7 +585,7 @@ function newConnection(socket)
 							timerSecondes = setInterval(timerSec, 1000);
 								
 							setTimeout(nextQuestion,40000);							
-						},7000);
+						},DelaiAvantPremiereQuestion);
 					
 					},2500);
 					
@@ -630,15 +646,45 @@ function newConnection(socket)
 		}
 		else
 		{
-			if (message.indexOf("/kick ") == 0)
+			var indexCurrentMessage = getIndexOfMemberByPseudo(listeDesMembresAvecDetail, data.pseudo);			
+			if ((listeDesMembresAvecDetail[indexCurrentMessage].floodNbrInfractions >= 1 && (Math.floor(Date.now()) - listeDesMembresAvecDetail[indexCurrentMessage].floodRespawnTime) > 8200) || listeDesMembresAvecDetail[indexCurrentMessage].floodCPT >= 13)
 			{
-				var commande = message.split(" ");
-				kick(commande[1]);
+				listeDesMembresAvecDetail[indexCurrentMessage].floodCPT = 0;
+				listeDesMembresAvecDetail[indexCurrentMessage].floodNbrInfractions = 0;
+			}									
+			listeDesMembresAvecDetail[indexCurrentMessage].floodCPT++;
+			for (i = 0 ; i < listeDesMembresAvecDetail.length ; i++)
+			{
+				if (i != indexCurrentMessage)
+				{
+					listeDesMembresAvecDetail[i].floodNbrInfractions = 0
+					listeDesMembresAvecDetail[i].floodCPT = 0
+					listeDesMembresAvecDetail[i].floodTime = Math.floor(Date.now());
+				}
+			}		
+			if ((!(listeDesMembresAvecDetail[indexCurrentMessage].floodCPT >= 10 && (Math.floor(Date.now()) - listeDesMembresAvecDetail[indexCurrentMessage].floodTime) < 10000)) && (Math.floor(Date.now()) - listeDesMembresAvecDetail[indexCurrentMessage].floodRespawnTime) > 8000)
+			{			
+				if (message.indexOf("/kick ") == 0)
+				{
+					var commande = message.split(" ");
+					kick(commande[1]);
+				}
+				else
+				{
+					socket.broadcast.emit('message', data);
+				}				
+				if (listeDesMembresAvecDetail[indexCurrentMessage].floodCPT == 1) listeDesMembresAvecDetail[indexCurrentMessage].floodTime = Math.floor(Date.now());
 			}
 			else
 			{
-				socket.broadcast.emit('message', data);
-			}
+				listeDesMembresAvecDetail[indexCurrentMessage].floodNbrInfractions++;
+				if (listeDesMembresAvecDetail[indexCurrentMessage].floodNbrInfractions == 1) 
+				{		
+					listeDesMembresAvecDetail[indexCurrentMessage].floodRespawnTime = Math.floor(Date.now());
+					io.sockets.emit('annonce',{type:99,annonce:listeDesMembresAvecDetail[indexCurrentMessage].name+" fait le foufou avec son clavier !"});
+				}
+				io.sockets.emit('annonce_flood_user',{type:6, user:data.pseudo,annonce: "[FLOOD] : Encore bloqué pendant " + (8 - Math.round((Math.floor(Date.now()) - listeDesMembresAvecDetail[indexCurrentMessage].floodRespawnTime) / 1000)) + " seconde(s) !"});	
+			}		
 		}
 		
 		
@@ -688,7 +734,8 @@ function newConnection(socket)
 			}
 			else
 			{
-				listeDesMembresAvecDetail.push(new membre(data.id, pseudo,Math.floor(Date.now() / 1000),0));
+											       
+				listeDesMembresAvecDetail.push(new membre(data.id, pseudo,Math.floor(Date.now() / 1000),0,0,Math.floor(Date.now()), 0, 0));
 			}
 
 			listeDesMembres.push(pseudo);
