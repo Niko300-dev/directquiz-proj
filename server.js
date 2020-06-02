@@ -11,7 +11,7 @@ var express = require('express');
 const axios = require('axios');
 const MINUTES_TIMEOUT = 160;
 var app = express();
-var server = app.listen(3001);
+var server = app.listen(3000);
 const regexHTML = /(<([^>]+)>)/ig;
 
 app.use(express.static('public'));
@@ -54,6 +54,43 @@ var listePhrasesSortie = new Array(0);
 var timeout = false;
 var globalChronoQuestion = 40;
 var timerSecondes = null;
+
+var insultes = new Array(0);
+
+ insultes.push("CUL");
+ insultes.push("BITE");
+ insultes.push("CHIER");
+ insultes.push("PUTAIN");
+ insultes.push("MERDE"); 
+ insultes.push("MERDEUX");
+ insultes.push("CONNARD");
+ insultes.push("CONNASSE");
+ insultes.push("CON");
+ insultes.push("CONS");
+ insultes.push("FILS DE PUTE");
+ insultes.push("SALOPE");
+ insultes.push("ENCULES");
+ insultes.push("ENCULE");
+ insultes.push("ENCULER");
+ insultes.push("TA MERE LA PUTE");
+ insultes.push("FILS DE CHIEN");
+ insultes.push("FOUTRE");
+ insultes.push("PUTE");
+ insultes.push("PUTTE");
+ insultes.push("SALOPE");
+ insultes.push("ABRUTI");
+ insultes.push("SAPERLIPOPETTE");
+ insultes.push("MORVEUX");
+ insultes.push("CRETIN");
+ insultes.push("IMBECILE");
+ insultes.push("FUCK");
+ insultes.push("MOTHER FUCKER");
+ insultes.push("COUILLES");
+ insultes.push("COUILLE");
+ insultes.push("ZIZI");
+ insultes.push("ZEZETTE");
+ insultes.push("KIKINE");
+
 
 init();
 
@@ -535,8 +572,17 @@ function newConnection(socket)
 	function messageGet(data)
 	{
 		console.log(data.pseudo + " : " + data.message);
+		if (data.message.indexOf('giphy.com/media/') > -1)
+		{
+			var message = data.message;
+		}
+		else
+		{
+			var message = data.message.replace(regexHTML,"");
+		}
 		
-		var message = data.message.replace(regexHTML,"");
+
+		
 		
 		reponseAttendue = "3598bde5-abe2-4703-a481-384c5276f2b7";
 		
@@ -647,7 +693,7 @@ function newConnection(socket)
 		else
 		{
 			var indexCurrentMessage = getIndexOfMemberByPseudo(listeDesMembresAvecDetail, data.pseudo);			
-			if ((listeDesMembresAvecDetail[indexCurrentMessage].floodNbrInfractions >= 1 && (Math.floor(Date.now()) - listeDesMembresAvecDetail[indexCurrentMessage].floodRespawnTime) > 8200) || listeDesMembresAvecDetail[indexCurrentMessage].floodCPT >= 13)
+			if ((listeDesMembresAvecDetail[indexCurrentMessage].floodNbrInfractions >= 2 && (Math.floor(Date.now()) - listeDesMembresAvecDetail[indexCurrentMessage].floodRespawnTime) > 8200) || listeDesMembresAvecDetail[indexCurrentMessage].floodCPT >= 12)
 			{
 				listeDesMembresAvecDetail[indexCurrentMessage].floodCPT = 0;
 				listeDesMembresAvecDetail[indexCurrentMessage].floodNbrInfractions = 0;
@@ -671,6 +717,28 @@ function newConnection(socket)
 				}
 				else
 				{
+					
+					var tempMessage = message;				
+					var motsMessages = tempMessage.split(" ");
+					var indexInsulte = -1;
+					
+					for (i = 0; i < motsMessages.length; i++)
+					{
+						indexInsulte = insultes.indexOf(motsMessages[i].normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase());
+						
+						if (indexInsulte > -1)
+						{		
+							var censure = "";
+							for (j = 0; j < insultes[indexInsulte].length; j++)
+							{
+								censure += "*";
+							}
+							motsMessages[i] = censure;	
+						}
+					}
+					
+					data.message = motsMessages.join(" ");									
+					
 					socket.broadcast.emit('message', data);
 				}				
 				if (listeDesMembresAvecDetail[indexCurrentMessage].floodCPT == 1) listeDesMembresAvecDetail[indexCurrentMessage].floodTime = Math.floor(Date.now());
@@ -681,7 +749,7 @@ function newConnection(socket)
 				if (listeDesMembresAvecDetail[indexCurrentMessage].floodNbrInfractions == 1) 
 				{		
 					listeDesMembresAvecDetail[indexCurrentMessage].floodRespawnTime = Math.floor(Date.now());
-					io.sockets.emit('annonce',{type:99,annonce:listeDesMembresAvecDetail[indexCurrentMessage].name+" fait le foufou avec son clavier !"});
+					// io.sockets.emit('annonce',{type:99,annonce:listeDesMembresAvecDetail[indexCurrentMessage].name+" fait le foufou avec son clavier !"});
 				}
 				io.sockets.emit('annonce_flood_user',{type:6, user:data.pseudo,annonce: "[FLOOD] : Encore bloqué pendant " + (8 - Math.round((Math.floor(Date.now()) - listeDesMembresAvecDetail[indexCurrentMessage].floodRespawnTime) / 1000)) + " seconde(s) !"});	
 			}		
@@ -801,7 +869,7 @@ function newConnection(socket)
 				if (listeDesMembres[i].toUpperCase() == pseudo.toUpperCase())
 				{
 					io.sockets.emit('annonce',{type:5,annonce:listeDesMembres[i] + " a été expulsé de la partie..."});
-					listeDesMembresAvecDetail[i].points = 0;
+					//listeDesMembresAvecDetail[i].points = 0;
 					allClients[i].disconnect(true);	
 				}
 
